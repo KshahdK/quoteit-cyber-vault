@@ -1,4 +1,4 @@
-FROM php:8.2-apache
+FROM php:8.3-apache
 
 RUN apt-get update && apt-get install -y \
     libsqlite3-dev \
@@ -22,7 +22,7 @@ COPY . .
 RUN if [ -d "quet-main" ]; then cp -r quet-main/* . 2>/dev/null || true; cp -r quet-main/.[!.]* . 2>/dev/null || true; fi
 
 RUN cp -n .env.example .env || true
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+RUN composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-reqs
 RUN mkdir -p database && touch database/database.sqlite
 RUN chown -R www-data:www-data storage bootstrap/cache database
 RUN chmod -R 775 storage bootstrap/cache database
