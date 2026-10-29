@@ -19,9 +19,11 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 COPY . .
 
+RUN if [ -d "quet-main" ]; then cp -r quet-main/* . 2>/dev/null || true; cp -r quet-main/.[!.]* . 2>/dev/null || true; fi
+
 RUN cp -n .env.example .env || true
 RUN composer install --no-dev --optimize-autoloader --no-interaction
-RUN touch database/database.sqlite
+RUN mkdir -p database && touch database/database.sqlite
 RUN chown -R www-data:www-data storage bootstrap/cache database
 RUN chmod -R 775 storage bootstrap/cache database
 
