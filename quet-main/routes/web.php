@@ -7,9 +7,6 @@ use App\Models\Quote;
 use App\Models\User;
 
 Route::get('/', function () {
-    if (!Auth::check()) {
-        return redirect('/login');
-    }
     $quotes = Quote::latest()->get();
     return view('welcome', compact('quotes'));
 })->name('home');
@@ -46,7 +43,7 @@ Route::get('/signup', function () {
 Route::post('/signup', function (Request $request) {$request->validate([
         'name' => 'required|string|min:2|max:50',
         'email' => 'required|email|unique:users,email',
-        'password' => 'required|min:6',
+        'password' => 'required|min:8',
     ]);
 
     $user = User::create([
