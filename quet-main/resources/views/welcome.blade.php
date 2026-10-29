@@ -1,11 +1,8 @@
 @php
-    $myQuotes = request()->has('quotes')
-        ? array_filter((array) request()->query('quotes', []), 'is_string')
-        : [];
-    ksort($myQuotes);
-    $reversedQuotes = array_reverse($myQuotes, true);
-
-    $editingIndex = request()->integer('edit', -1);$userName = request('name', 'Shahad');
+    $currentUser = Auth::user();
+    $userName = $currentUser ? $currentUser->name : 'Agent';
+    $userId = $currentUser ? $currentUser->id : 0;
+    $dbQuotes = isset($quotes) ? $quotes : [];
 
     $cyberQuotes = [
         [
@@ -75,8 +72,8 @@
     <header class="sticky top-0 z-40 w-full border-b border-white/10 bg-[#0d091a]/90 backdrop-blur-xl">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <a href="<?= url('/?guest=1') ?>" class="px-4 py-2 rounded-xl bg-white/5 hover:bg-rose-500/20 hover:text-rose-300 text-slate-300 font-medium text-xs border border-white/10 transition-all">
-                    Log Out
+                <a href="<?= url('/logout') ?>" class="px-4 py-2 rounded-xl bg-white/5 hover:bg-rose-500/20 hover:text-rose-300 text-slate-300 font-medium text-xs border border-white/10 transition-all">
+                    Log Out 🚪
                 </a>
                 <div class="flex items-center gap-2.5 pl-2 border-l border-white/10">
                     <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#f2a54a] to-[#4fc9b0] text-[#0d091a] flex items-center justify-center text-xs font-black ring-1 ring-white/20 shadow">
@@ -127,7 +124,7 @@
                                 <span class="w-2 h-2 rounded-full bg-[#4fc9b0] animate-ping"></span>
                                 Cyber Security Vault
                             </span>
-                            <span class="text-xs text-slate-400">Tuwaiq Edition</span>
+                            <span class="text-xs text-slate-400">Authenticated Session</span>
                         </div>
                         <h1 class="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
                             Welcome, <span class="bg-gradient-to-r from-[#4fc9b0] via-[#f2a54a] to-purple-300 bg-clip-text text-transparent"><?= htmlspecialchars($userName) ?></span> 🛡️
@@ -152,7 +149,7 @@
                 <div class="mt-6 pt-5 border-t border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs">
                     <div class="flex items-center gap-4 text-slate-400">
                         <span class="flex items-center gap-1.5"><span class="text-[#4fc9b0]">●</span> Active Protection</span>
-                        <span class="flex items-center gap-1.5"><span class="text-[#f2a54a]">●</span> Verified Rules</span>
+                        <span class="flex items-center gap-1.5"><span class="text-[#f2a54a]">●</span> Verified Identity</span>
                     </div>
                     
                     <div class="flex items-center p-1 rounded-xl bg-black/40 border border-white/10 font-semibold">
@@ -160,7 +157,7 @@
                             All Intel
                         </button>
                         <button type="button" onclick="filterFeed('my')" id="tab-my" class="filter-tab px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white transition cursor-pointer">
-                            My Quotes (<?= count($myQuotes) ?>)
+                            My Quotes
                         </button>
                         <button type="button" onclick="filterFeed('favorites')" id="tab-favorites" class="filter-tab px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white transition flex items-center gap-1.5 cursor-pointer">
                             <span>Saved Vault</span>
@@ -185,92 +182,65 @@
             <!-- Quotes Feed -->
             <div class="space-y-4" id="quotes-container">
 
-                <?php if (!empty($reversedQuotes)): ?>
-                    <?php foreach ($reversedQuotes as $index =>$quoteText): ?>
-                        <div class="quote-wrapper my-quote-item" data-id="my_<?= $index ?>">
-                            <?php if ($index ===$editingIndex): ?>
-                                <div class="rounded-2xl p-6 bg-gradient-to-br from-[#432a80] to-[#2c1854] border-2 border-[#4fc9b0] shadow-xl text-white">
-                                    <div class="flex items-center justify-between mb-3 text-xs text-[#4fc9b0] font-bold">
-                                        <span>Modify Cyber Thought</span>
-                                        <span>Max 155 characters</span>
+                <!-- Database Quotes Created by Users -->
+                <?php if (count($dbQuotes) > 0): ?>
+                    <?php foreach ($dbQuotes as $quote): ?>
+                        <?php $isMyQuote = ($quote->user_id == $userId); ?>
+                        <div class="quote-wrapper <?= $isMyQuote ? 'my-quote-item' : 'community-quote-item' ?>" data-id="db_<?= $quote->id ?>">
+                            <blockquote class="relative rounded-2xl p-6 <?= $isMyQuote ? 'bg-gradient-to-br from-[#3b206f] to-[#231245] border border-white/20' : 'bg-[#18112c] border border-white/10' ?> shadow-xl text-white">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center gap-2.5">
+                                        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#f2a54a] to-[#4fc9b0] text-[#0d091a] flex items-center justify-center font-extrabold text-xs shadow">
+                                            <?= strtoupper(substr($quote->author ?? 'A', 0, 1)) ?>
+                                        </div>
+                                        <div>
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-xs font-bold text-white"><?= htmlspecialchars($quote->author ?? 'Agent') ?></span>
+                                                <span class="px-2 py-0.5 rounded-full bg-[#4fc9b0]/20 border border-[#4fc9b0]/40 text-[#4fc9b0] text-[10px] font-semibold"><?= htmlspecialchars($quote->tag ?? 'Cyber Intel') ?></span>
+                                                <?php if ($isMyQuote): ?>
+                                                    <span class="px-2 py-0.5 rounded-full bg-purple-500/20 border border-purple-400/40 text-purple-300 text-[10px] font-medium">You</span>
+                                                <?php endif; ?>
+                                            </div>
+                                            <span class="text-[10px] text-slate-400"><?= $quote->created_at ? $quote->created_at->diffForHumans() : 'Just now' ?></span>
+                                        </div>
                                     </div>
-                                    <form method="GET" action="<?= url('/') ?>">
-                                        <?php foreach ($myQuotes as $idx =>$q): ?>
-                                            <?php if ($idx !==$index): ?>
-                                                <input type="hidden" name="quotes[<?= $idx ?>]" value="<?= htmlspecialchars($q) ?>">
-                                            <?php endif; ?>
-                                        <?php endforeach; ?>
-                                        <textarea 
-                                            name="quotes[<?= $index ?>]" 
-                                            rows="3" 
-                                            required 
-                                            minlength="3" 
-                                            maxlength="155" 
-                                            class="w-full p-4 rounded-xl bg-black/40 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#4fc9b0] text-sm"
-                                        ><?= htmlspecialchars($quoteText) ?></textarea>
-                                        <div class="flex justify-end gap-2 mt-3">
-                                            <a href="<?= url('/') ?>" class="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs text-white">Cancel</a>
-                                            <button type="submit" class="px-5 py-2 rounded-xl bg-[#4fc9b0] hover:bg-[#3db39c] text-[#0d091a] text-xs font-bold shadow cursor-pointer">Save Changes</button>
-                                        </div>
-                                    </form>
-                                </div>
-                            <?php else: ?>
-                                <blockquote class="relative rounded-2xl p-6 bg-gradient-to-br from-[#3b206f] to-[#231245] border border-white/20 shadow-xl text-white">
-                                    <div class="flex items-center justify-between mb-4">
-                                        <div class="flex items-center gap-2.5">
-                                            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#f2a54a] to-[#4fc9b0] text-[#0d091a] flex items-center justify-center font-extrabold text-xs shadow">
-                                                <?= strtoupper(substr($userName, 0, 1)) ?>
-                                            </div>
-                                            <div>
-                                                <div class="flex items-center gap-2">
-                                                    <span class="text-xs font-bold text-white"><?= htmlspecialchars($userName) ?></span>
-                                                    <span class="px-2 py-0.5 rounded-full bg-[#4fc9b0]/20 border border-[#4fc9b0]/40 text-[#4fc9b0] text-[10px] font-semibold">Author</span>
-                                                </div>
-                                                <span class="text-[10px] text-slate-300">Today</span>
-                                            </div>
-                                        </div>
+                                    
+                                    <?php if ($isMyQuote): ?>
                                         <div class="flex items-center gap-1.5">
-                                            <a href="<?= url('/?edit=' . $index) ?>" title="Edit quote" class="p-1.5 rounded-lg hover:bg-white/20 text-white/80 transition">
-                                                ✏️
-                                            </a>
-                                            <?php 
-                                                $remaining = \Illuminate\Support\Arr::except($myQuotes,$index); 
-                                                $deleteUrl = url('/?' . http_build_query(['quotes' => $remaining]));
-                                            ?>
-                                            <a href="<?= $deleteUrl ?>" onclick="return confirm('Are you sure you want to delete this quote?');" title="Delete quote" class="p-1.5 rounded-lg hover:bg-rose-500/20 text-rose-300 transition">
-                                                🗑️
-                                            </a>
+                                            <form method="POST" action="<?= url('/quotes/' . $quote->id . '/delete') ?>" onsubmit="return confirm('Delete this quote?');" style="display:inline;">
+                                                <input type="hidden" name="_token" value="<?= csrf_token() ?>">
+                                                <button type="submit" title="Delete your quote" class="p-1.5 rounded-lg hover:bg-rose-500/20 text-rose-300 transition cursor-pointer">
+                                                    🗑️
+                                                </button>
+                                            </form>
                                         </div>
-                                    </div>
+                                    <?php endif; ?>
+                                </div>
 
-                                    <p class="text-base sm:text-lg font-medium leading-relaxed mb-4 text-slate-100">
-                                        "<?= htmlspecialchars($quoteText) ?>"
-                                    </p>
+                                <p class="text-base sm:text-lg font-medium leading-relaxed mb-4 text-slate-100">
+                                    "<?= htmlspecialchars($quote->text) ?>"
+                                </p>
 
-                                    <div class="pt-3 border-t border-white/10 flex items-center justify-between text-xs">
-                                        <div class="flex items-center gap-3">
-                                            <button type="button" onclick="toggleLike('my_<?= $index ?>')" id="like-btn-my_<?= $index ?>" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition font-semibold text-white cursor-pointer">
-                                                <span id="heart-icon-my_<?= $index ?>">🤍</span>
-                                                <span id="like-count-my_<?= $index ?>">1</span>
-                                            </button>
-                                            <button type="button" onclick="toggleBookmark('my_<?= $index ?>')" id="fav-btn-my_<?= $index ?>" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition font-semibold text-white cursor-pointer">
-                                                <span id="fav-icon-my_<?= $index ?>">🔖</span>
-                                                <span id="fav-text-my_<?= $index ?>">Save</span>
-                                            </button>
-                                        </div>
-                                        <span class="text-[11px] text-[#4fc9b0]/80">Shahad's Vault</span>
+                                <div class="pt-3 border-t border-white/10 flex items-center justify-between text-xs">
+                                    <div class="flex items-center gap-3">
+                                        <button type="button" onclick="toggleLike('db_<?= $quote->id ?>')" id="like-btn-db_<?= $quote->id ?>" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition font-semibold text-white cursor-pointer">
+                                            <span id="heart-icon-db_<?= $quote->id ?>">🤍</span>
+                                            <span id="like-count-db_<?= $quote->id ?>">1</span>
+                                        </button>
+                                        <button type="button" onclick="toggleBookmark('db_<?= $quote->id ?>')" id="fav-btn-db_<?= $quote->id ?>" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition font-semibold text-white cursor-pointer">
+                                            <span id="fav-icon-db_<?= $quote->id ?>">🔖</span>
+                                            <span id="fav-text-db_<?= $quote->id ?>">Save</span>
+                                        </button>
                                     </div>
-                                </blockquote>
-                            <?php endif; ?>
+                                    <span class="text-[11px] text-[#4fc9b0]/80"><?= htmlspecialchars($quote->author) ?>'s Vault</span>
+                                </div>
+                            </blockquote>
                         </div>
                     <?php endforeach; ?>
-                <?php else: ?>
-                    <div class="text-center py-6 text-slate-400 text-xs">
-                        No custom intel added yet. Click the + button below to share your first insight!
-                    </div>
                 <?php endif; ?>
 
-                <?php foreach ($cyberQuotes as$quote): ?>
+                <!-- Curated Cyber Security Doctrine Quotes -->
+                <?php foreach ($cyberQuotes as $quote): ?>
                     <div class="quote-wrapper community-quote-item" data-id="<?= $quote['id'] ?>">
                         <blockquote class="rounded-2xl p-6 bg-white border border-slate-200 shadow-md text-slate-800 hover:shadow-xl transition-all duration-200">
                             <div class="flex items-center justify-between mb-4">
@@ -280,7 +250,7 @@
                                     </div>
                                     <div>
                                         <span class="text-xs font-bold block text-slate-900"><?= htmlspecialchars($quote['author']) ?></span>
-                                        <span class="text-[10px] text-slate-400"><?= $quote['role'] ?> • <?=$quote['date'] ?></span>
+                                        <span class="text-[10px] text-slate-400"><?= $quote['role'] ?> • <?= $quote['date'] ?></span>
                                     </div>
                                 </div>
                                 <span class="px-2.5 py-0.5 rounded-full bg-slate-100 text-[#432a80] text-[10px] font-bold border border-slate-200">
@@ -337,15 +307,21 @@
             <button popovertarget="quote-popup" popovertargetaction="hide" class="text-slate-400 hover:text-white text-xl cursor-pointer">✕</button>
         </div>
 
-        <form method="GET" action="<?= url('/') ?>" class="space-y-4">
-            <?php foreach ($myQuotes as $index =>$savedQuote): ?>
-                <input type="hidden" name="quotes[<?= $index ?>]" value="<?= htmlspecialchars($savedQuote) ?>">
-            <?php endforeach; ?>
+        <form method="POST" action="<?= url('/quotes') ?>" class="space-y-4">
+            <input type="hidden" name="_token" value="<?= csrf_token() ?>">
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Author Identity:</label>
+                <div class="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-[#4fc9b0] font-bold flex items-center gap-2">
+                    <span>👤</span>
+                    <span><?= htmlspecialchars($userName) ?> (You)</span>
+                </div>
+            </div>
 
             <div>
                 <label class="block text-xs font-semibold text-slate-300 mb-2">Security Advice or Quote:</label>
                 <textarea 
-                    name="quotes[]" 
+                    name="text" 
                     rows="4" 
                     required 
                     minlength="3" 
@@ -379,7 +355,7 @@
                 <span>•</span>
                 <span>Tuwaiq Academy</span>
             </div>
-            <p>Designed by Shahad — Laravel & Blade</p>
+            <p>Designed by Shahad — Laravel & SQLite</p>
         </div>
     </footer>
 
